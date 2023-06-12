@@ -1,0 +1,4 @@
+*.jpg
+ouputs/*
+pretrained_models/*
+results/*
