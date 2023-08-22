@@ -124,11 +124,7 @@ latent_editor = FaceEditor(net.decoder)
 def encoder(image_path):
     
     original_image = Image.open(image_path).convert("RGB")
-    if experiment_type == 'cars':
-        original_image = original_image.resize((192, 256))
-    else:
-        original_image = original_image.resize((256, 256))
-    original_image
+    original_image = original_image.resize((256, 256))
 
     #Align Image 
     input_is_aligned = False #@param {type:"boolean"}
@@ -160,11 +156,12 @@ def encoder(image_path):
     latent_editor = FaceEditor(net.decoder)
     lat_image = latent_editor._latents_to_image(all_latents= latent1, weights_deltas = weights_deltas1)           
     res = (lat_image[0])[0]
+    torch.cuda.empty_cache()
     return res,latent1.reshape([1,18,512]).cpu(), weights_deltas1
     
 def gestos(latent_vector, weights_deltas):
     #TODO encontrar bien las direcciones?
-    p = Path('./Directions/all/')# carpeta emocion
+    p = Path('.')# carpeta emocion
     npz = p.glob('*.npz')
     npz_vect = [torch.tensor(np.load(x)['w']).reshape([18,512]).cuda() for x in sorted(npz)] 
     print("Cargue las direcciones")
@@ -172,7 +169,7 @@ def gestos(latent_vector, weights_deltas):
     final = torch.tensor(npz_vect[0], device=torch.device('cuda')).reshape([18,512])
     image_list = []
     for i in range(10): 
-        W = inicial + ((final-inicial)*(i/9))#i
+        W = inicial + ((final-inicial)*(i/9))
         lat = [W.reshape([1,18,512]).float()]     
         lat_image = latent_editor._latents_to_image(all_latents= lat, weights_deltas=weights_deltas)           
         res = (lat_image[0])[0]
