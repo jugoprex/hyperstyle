@@ -123,18 +123,17 @@ pprint.pprint(vars(opts))
 
 
 
-# we get our images
-#nutral
-p = Path('../datasets/OSU/OSU_crop/')
-pictures = p.glob('*.jpg')
-imgs = [x for x in sorted(pictures)] 
+#devuelve la imagen proyectada y el npz
+def encoder(image_path):
+    # we get our images
+    # #nutral
+    # p = Path(in_path)
+    # pictures = os.listdir(p)
 
-print('longitud = ', len(imgs))
-for k in range(len(imgs)):
     #image1
-    image_path = EXPERIMENT_DATA_ARGS[experiment_type]["image_path"]
+    #image_path = EXPERIMENT_DATA_ARGS[experiment_type]["image_path"]
     
-    original_image = Image.open(imgs[k]).convert("RGB")
+    original_image = Image.open(image_path).convert("RGB")
     if experiment_type == 'cars':
         original_image = original_image.resize((192, 256))
     else:
@@ -144,7 +143,7 @@ for k in range(len(imgs)):
     #Align Image 
     input_is_aligned = False #@param {type:"boolean"}
     if experiment_type == "faces" and not input_is_aligned:
-        input_image = run_alignment(str(imgs[k]))
+        input_image = run_alignment(image_path)
     else:
         input_image = original_image
 
@@ -162,14 +161,20 @@ for k in range(len(imgs)):
         tic = time.time()
         #result_batch, result_latents, _ = run_inversion(transformed_image.unsqueeze(0).cpu().numpy(),
         y_hat1, latent1, weights_deltas1, codes1= run_inversion(transformed_image.unsqueeze(0).cuda(), 
-                                                              net, 
-                                                              opts,
-                                                              return_intermediate_results=False)
+                                                                net, 
+                                                                opts,
+                                                                return_intermediate_results=False)
         toc = time.time()
         
-
-   
-    print('----------------------------------------------------------------------------')    
+    # encoder part
+    latent_editor = FaceEditor(net.decoder)
+    lat_image = latent_editor._latents_to_image(all_latents= latent1, weights_deltas = weights_deltas1)           
+    res = (lat_image[0])[0]
+    return res,latent1.reshape([1,18,512]).cpu() #jijijuju
+    print('saving encoder')
+    res.save(f'{out_path}%s.png' % (pictures[k].replace('.png', '')))
+    print('----------------------------------------------------------------------------') 
+        
 
     #for idx, w in enumerate(latent1):
     #    for idx2, w2 in enumerate(latent2):
@@ -177,5 +182,9 @@ for k in range(len(imgs)):
     #        latent_final = W.reshape([1,18,512]).cpu()
 
     print('saving npz file ', k) 
-    np.savez(f'Directions/all/{k}.npz', w=latent1.reshape([1,18,512]).cpu())
+    np.savez(f'{out_path}%s.npz' % (pictures[k].replace('.png', '')), w=latent1.reshape([1,18,512]).cpu())
     
+        
+      
+        
+        
