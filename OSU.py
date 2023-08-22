@@ -18,8 +18,6 @@ from utils.domain_adaptation_utils import run_domain_adaptation
 from utils.model_utils import load_model, load_generator
 from editing.face_editor import FaceEditor
 
-
-
 def run_inversion(inputs, net, opts, return_intermediate_results=False):
     y_hat, latent, weights_deltas, codes = None, None, None, None
 
@@ -119,19 +117,11 @@ EXPERIMENT_ARGS = EXPERIMENT_DATA_ARGS[experiment_type]
 model_path = EXPERIMENT_ARGS['model_path']
 net, opts = load_model(model_path, update_opts={"w_encoder_checkpoint_path": EXPERIMENT_ARGS['w_encoder_path']})
 print('Model successfully loaded!')
-pprint.pprint(vars(opts))
-
-
+latent_editor = FaceEditor(net.decoder)
+#pprint.pprint(vars(opts))
 
 #devuelve la imagen proyectada y el npz
 def encoder(image_path):
-    # we get our images
-    # #nutral
-    # p = Path(in_path)
-    # pictures = os.listdir(p)
-
-    #image1
-    #image_path = EXPERIMENT_DATA_ARGS[experiment_type]["image_path"]
     
     original_image = Image.open(image_path).convert("RGB")
     if experiment_type == 'cars':
@@ -170,21 +160,25 @@ def encoder(image_path):
     latent_editor = FaceEditor(net.decoder)
     lat_image = latent_editor._latents_to_image(all_latents= latent1, weights_deltas = weights_deltas1)           
     res = (lat_image[0])[0]
-    return res,latent1.reshape([1,18,512]).cpu() #jijijuju
-    print('saving encoder')
-    res.save(f'{out_path}%s.png' % (pictures[k].replace('.png', '')))
-    print('----------------------------------------------------------------------------') 
-        
-
-    #for idx, w in enumerate(latent1):
-    #    for idx2, w2 in enumerate(latent2):
-    #        W = w2-w
-    #        latent_final = W.reshape([1,18,512]).cpu()
-
-    print('saving npz file ', k) 
-    np.savez(f'{out_path}%s.npz' % (pictures[k].replace('.png', '')), w=latent1.reshape([1,18,512]).cpu())
+    return res,latent1.reshape([1,18,512]).cpu(), weights_deltas1
     
-        
+def gestos(latent_vector, weights_deltas):
+    #TODO encontrar bien las direcciones?
+    p = Path('./Directions/all/')# carpeta emocion
+    npz = p.glob('*.npz')
+    npz_vect = [torch.tensor(np.load(x)['w']).reshape([18,512]).cuda() for x in sorted(npz)] 
+    print("Cargue las direcciones")
+    inicial = torch.tensor(latent_vector, device=torch.device('cuda')).reshape([18,512])  
+    final = torch.tensor(npz_vect[0], device=torch.device('cuda')).reshape([18,512])
+    image_list = []
+    for i in range(10): 
+        W = inicial + ((final-inicial)*(i/9))#i
+        lat = [W.reshape([1,18,512]).float()]     
+        lat_image = latent_editor._latents_to_image(all_latents= lat, weights_deltas=weights_deltas)           
+        res = (lat_image[0])[0]
+        image_list.append(res)
+    return image_list
+    
       
         
         

@@ -22,13 +22,8 @@ import PIL.Image
 import torch
 import torch.nn.functional as F
 import glob
-from OSU import encoder
-
-import cv2
-
-import sys
-
-# cambiar esto pls
+from OSU import encoder, gestos
+from matplotlib import pyplot as plt
 
 
 #----------------------------------------------------------------------------
@@ -88,7 +83,7 @@ def run_projection(
                     # Optimize projection.
                     start_time = perf_counter()
 
-                    projected_w, npz = encoder(G)
+                    projected_w, npz, weight_deltas = encoder(G)
                     print (f'Elapsed: {(perf_counter()-start_time):.1f} s')
 
                     # get images_list[img] filename
@@ -96,7 +91,11 @@ def run_projection(
                     os.makedirs(outdir, exist_ok=True)
 
                     projected_w.save(f'{outdir}/{filename}')
-                    
+                    images_react = gestos(npz,weight_deltas)
+                    j = 1
+                    for i in images_react:
+                        plt.imsave(f'{outdir}/{filename}_{j}.png',i)
+                        j += 1
                     np.savez(f'{outdir}/{filename}.npz', npz)
                     print('Done.')
                     imagenes_proyectadas.append(img)
@@ -106,13 +105,10 @@ def run_projection(
             # Si ya se proyectaron todas las imagenes, espero 5 segundos y vuelvo a chequear
             time.sleep(5)
 
-           
-
-
-
 #----------------------------------------------------------------------------
 
 if __name__ == "__main__":
+
     run_projection() # pylint: disable=no-value-for-parameter
 
 #----------------------------------------------------------------------------
