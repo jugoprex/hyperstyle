@@ -31,8 +31,8 @@ from matplotlib import pyplot as plt
 @click.command()
 @click.option('--network', 'network_pkl', help='Network pickle filename', type=str, default='models/ffhq2.pkl',show_default=True)
 @click.option('--seed',                   help='Random seed', type=int, default=303, show_default=True)
-@click.option('--images_path',            help='Path to images directory', type=str, required=True)
-@click.option('--outdir',                 help='Path to output directory', type=str, required=True)
+@click.option('--images_path',            help='Path to images directory', type=str, default='img/', show_default=True)
+@click.option('--outdir',                 help='Path to output directory', type=str, default='out/', show_default=True)
 
 def run_projection(
     network_pkl: str,

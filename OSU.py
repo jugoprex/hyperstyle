@@ -2,13 +2,14 @@
 import time
 import os
 import sys
-import pprint
+import pickle
 import numpy as np
 from PIL import Image
 import torch
 import torchvision.transforms as transforms
 from pathlib import Path
 import glob
+import re
 sys.path.append(".")
 sys.path.append("..")
 
@@ -62,7 +63,6 @@ def run_inversion(inputs, net, opts, return_intermediate_results=False):
 
     return y_hat, latent, weights_deltas, codes
 
-
 def store_intermediate_results(results_batch, results_latent, results_deltas, y_hat, latent, weights_deltas):
     print('encontradoooo',type(y_hat),y_hat.size())
     for idx in range(y_hat.shape[0]):
@@ -113,10 +113,19 @@ EXPERIMENT_DATA_ARGS = {
 
 EXPERIMENT_ARGS = EXPERIMENT_DATA_ARGS[experiment_type]
 
+#Load LR Model
+e = 1 #expresion numero 1 es happy
+LR_model_path = (f'./models/LR{e}/')
+sav = sorted(glob.glob(f'./models/LR{e}/*.sav'), key=lambda x:float(re.findall("(\d+)",x)[0]))
+loaded_models=[]
+for i in sav:
+    loaded_models.append(pickle.load(open(i, 'rb')))
+print('LR successfully loaded!')
+
 #Load HyperStyle Model
 model_path = EXPERIMENT_ARGS['model_path']
 net, opts = load_model(model_path, update_opts={"w_encoder_checkpoint_path": EXPERIMENT_ARGS['w_encoder_path']})
-print('Model successfully loaded!')
+print('Hypersytle successfully loaded!')
 latent_editor = FaceEditor(net.decoder)
 #pprint.pprint(vars(opts))
 
@@ -138,7 +147,6 @@ def encoder(image_path):
     opts.n_iters_per_batch = n_iters_per_batch
     opts.resize_outputs = False 
 
-
     #Run Inference
     img_transforms = EXPERIMENT_ARGS['transform']
     transformed_image = img_transforms(input_image) 
@@ -153,23 +161,27 @@ def encoder(image_path):
         toc = time.time()
         
     # encoder part
-    latent_editor = FaceEditor(net.decoder)
     lat_image = latent_editor._latents_to_image(all_latents= latent1, weights_deltas = weights_deltas1)           
     res = (lat_image[0])[0]
     torch.cuda.empty_cache()
     return res,latent1.reshape([1,18,512]).cpu(), weights_deltas1
     
 def gestos(latent_vector, weights_deltas):
-    #TODO encontrar bien las direcciones?
-    p = Path('.')# carpeta emocion
-    npz = p.glob('*.npz')
-    npz_vect = [torch.tensor(np.load(x)['w']).reshape([18,512]).cuda() for x in sorted(npz)] 
-    print("Cargue las direcciones")
-    inicial = torch.tensor(latent_vector, device=torch.device('cuda')).reshape([18,512])  
-    final = torch.tensor(npz_vect[0], device=torch.device('cuda')).reshape([18,512])
+    cant = 10
+    delta = 9
+
+    inicial = torch.tensor(latent_vector, device=torch.device('cuda')).reshape([18,512])      
+    first_layer = inicial[0]
+    f = []
+    for j in range(512):
+        f.append(loaded_models[j].predict(first_layer[j].reshape(-1,1).detach().cpu().numpy()))
+    print('Prediccion de gestos exitosa!')
+    final = np.asarray(f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f)
+    final = torch.tensor(final, device=torch.device('cuda')).reshape([18,512])
+
     image_list = []
-    for i in range(10): 
-        W = inicial + ((final-inicial)*(i/9))
+    for i in range(cant): 
+        W = inicial + ((final-inicial)*(i/delta))
         lat = [W.reshape([1,18,512]).float()]     
         lat_image = latent_editor._latents_to_image(all_latents= lat, weights_deltas=weights_deltas)           
         res = (lat_image[0])[0]
