@@ -9,7 +9,7 @@ import torch
 import torchvision.transforms as transforms
 from pathlib import Path
 import glob
-import re
+import warnings
 sys.path.append(".")
 sys.path.append("..")
 
@@ -69,7 +69,12 @@ def store_intermediate_results(results_batch, results_latent, results_deltas, y_
         results_batch[idx].append(y_hat[idx])
         results_latent[idx].append(latent[idx].cpu().numpy())
         results_deltas[idx].append([w[idx].cpu().numpy() if w is not None else None for w in weights_deltas])
-        
+
+def get_key(fp):
+    filename = os.path.splitext(os.path.basename(fp))[0]
+    int_part = filename.split()[0][len('LR_model'):]
+    return int(int_part) 
+
 print('starting')
 
 def run_alignment(image_path):
@@ -80,6 +85,8 @@ def run_alignment(image_path):
     print(f"Finished running alignment on image: {image_path}")
     return aligned_image
 experiment_type = 'faces'
+
+warnings.filterwarnings('ignore')
 
 EXPERIMENT_DATA_ARGS = {
     "faces": {
@@ -112,15 +119,6 @@ EXPERIMENT_DATA_ARGS = {
 }
 
 EXPERIMENT_ARGS = EXPERIMENT_DATA_ARGS[experiment_type]
-
-#Load LR Model
-e = 1 #expresion numero 1 es happy
-LR_model_path = (f'./models/LR{e}/')
-sav = sorted(glob.glob(f'./models/LR{e}/*.sav'), key=lambda x:float(re.findall("(\d+)",x)[0]))
-loaded_models=[]
-for i in sav:
-    loaded_models.append(pickle.load(open(i, 'rb')))
-print('LR successfully loaded!')
 
 #Load HyperStyle Model
 model_path = EXPERIMENT_ARGS['model_path']
@@ -167,26 +165,37 @@ def encoder(image_path):
     return res,latent1.reshape([1,18,512]).cpu(), weights_deltas1
     
 def gestos(latent_vector, weights_deltas):
-    cant = 10
+    n = 3
+    emotions = []
+    for e in range(1,n):
+        modelo_emocion_i = sorted(glob.glob(f'./models/m2/REG{e}/*.sav'), key=get_key)
+        modelos = [x for x in modelo_emocion_i]
+        latent_vector = latent_vector.reshape([18,512])
+        inicial = torch.tensor(latent_vector, device=torch.device('cuda')).reshape([18,512])
+        modelo_e = inicial[0].reshape(1,-1)
+        f = []
+        for j in range(len(modelos)):
+            loaded_model = pickle.load(open(modelos[j], 'rb'))
+            f.append(loaded_model.predict(modelo_e[:,j].reshape(1,-1).detach().cpu().numpy()))
+        
+        result = np.asarray(f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f)
+        final = torch.tensor(result, device=torch.device('cuda')).reshape([18,512])
+        emotions.append(final)
+
+    steps = 9
     delta = 9
-
-    inicial = torch.tensor(latent_vector, device=torch.device('cuda')).reshape([18,512])      
-    first_layer = inicial[0]
-    f = []
-    for j in range(512):
-        f.append(loaded_models[j].predict(first_layer[j].reshape(-1,1).detach().cpu().numpy()))
-    print('Prediccion de gestos exitosa!')
-    final = np.asarray(f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f+f)
-    final = torch.tensor(final, device=torch.device('cuda')).reshape([18,512])
-
-    image_list = []
-    for i in range(cant): 
-        W = inicial + ((final-inicial)*(i/delta))
-        lat = [W.reshape([1,18,512]).float()]     
-        lat_image = latent_editor._latents_to_image(all_latents= lat, weights_deltas=weights_deltas)           
-        res = (lat_image[0])[0]
-        image_list.append(res)
-    return image_list
+    emotion_array = []
+    for j in range(n):
+        image_list = []
+        for i in range(steps): 
+            final = emotions[j-1]
+            W = inicial + ((final-inicial)*(2*i/delta))
+            lat = [W.reshape([1,18,512]).float()]     
+            lat_image = latent_editor._latents_to_image(all_latents= lat, weights_deltas=weights_deltas)           
+            res = (lat_image[0])[0]
+            image_list.append(res)
+        emotion_array.append(image_list)
+    return emotion_array
     
       
         

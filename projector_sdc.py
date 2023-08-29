@@ -62,7 +62,6 @@ def run_projection(
     images_list = list(dict.fromkeys(new))
     images_list.sort(key=lambda x: os.path.getmtime(x))
 
-    last_img = 0
     while True:
         # Me fijo si hay imagenes nuevas en la carpeta y las agrego atrás
         new = glob.glob(os.path.join(images_path, '*.png'))
@@ -77,7 +76,7 @@ def run_projection(
             if img not in imagenes_proyectadas:
                 print('Proyectando imagen "%s"...' % images_list[img])
                 try:
-                    # Load target image.
+                    #Load target image.
                     G = images_list[img]
 
                     # Optimize projection.
@@ -91,12 +90,16 @@ def run_projection(
                     os.makedirs(outdir, exist_ok=True)
 
                     projected_w.save(f'{outdir}/{filename}')
+                    print('Generando gestos...')
+
+                    start_time = perf_counter()
                     images_react = gestos(npz,weight_deltas)
+                    print (f'Elapsed: {(perf_counter()-start_time):.1f} s')
                     j = 1
-                    for i in images_react:
-                        plt.imsave(f'{outdir}/{filename}_{j}.png',i)
-                        j += 1
-                    np.savez(f'{outdir}/{filename}.npz', npz)
+                    for gesture in images_react:
+                        for face in gesture:
+                            face.save(f'{outdir}/{j}_{filename}.png')
+                            j += 1
                     print('Done.')
                     imagenes_proyectadas.append(img)
                 except Exception as e: 
