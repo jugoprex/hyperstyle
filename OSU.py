@@ -164,8 +164,7 @@ def encoder(image_path):
     torch.cuda.empty_cache()
     return res,latent1.reshape([1,18,512]).cpu(), weights_deltas1
     
-def gestos(latent_vector, weights_deltas):
-    n = 3
+def gestos(latent_vector, weights_deltas, steps, n):
     emotions = []
     for e in range(1,n):
         modelo_emocion_i = sorted(glob.glob(f'./models/m2/REG{e}/*.sav'), key=get_key)
@@ -182,7 +181,6 @@ def gestos(latent_vector, weights_deltas):
         final = torch.tensor(result, device=torch.device('cuda')).reshape([18,512])
         emotions.append(final)
 
-    steps = 9
     delta = 9
     emotion_array = []
     for j in range(n):

@@ -24,6 +24,7 @@ import torch.nn.functional as F
 import glob
 from OSU import encoder, gestos
 from matplotlib import pyplot as plt
+from pathlib import Path
 
 
 #----------------------------------------------------------------------------
@@ -75,36 +76,42 @@ def run_projection(
             
             if img not in imagenes_proyectadas:
                 print('Proyectando imagen "%s"...' % images_list[img])
-                try:
+                #try:
                     #Load target image.
-                    G = images_list[img]
+                G = images_list[img]
 
-                    # Optimize projection.
-                    start_time = perf_counter()
+                # Optimize projection.
+                start_time = perf_counter()
 
-                    projected_w, npz, weight_deltas = encoder(G)
-                    print (f'Elapsed: {(perf_counter()-start_time):.1f} s')
+                projected_w, npz, weight_deltas = encoder(G)
+                print (f'Elapsed: {(perf_counter()-start_time):.1f} s')
 
-                    # get images_list[img] filename
-                    filename = os.path.basename(images_list[img])
-                    os.makedirs(outdir, exist_ok=True)
+                # get images_list[img] filename
+                filename = Path(images_list[img]).stem
+                os.makedirs(outdir, exist_ok=True)
 
-                    projected_w.save(f'{outdir}/{filename}')
-                    print('Generando gestos...')
+                projected_w.save(f'{outdir}/{filename}.png')
+                print('Generando gestos...')
 
-                    start_time = perf_counter()
-                    images_react = gestos(npz,weight_deltas)
-                    print (f'Elapsed: {(perf_counter()-start_time):.1f} s')
-                    j = 1
-                    for gesture in images_react:
-                        for face in gesture:
-                            face.save(f'{outdir}/{j}_{filename}.png')
-                            j += 1
-                    print('Done.')
-                    imagenes_proyectadas.append(img)
-                except Exception as e: 
-                    print(e)
-                    pass
+                start_time = perf_counter()
+                steps = 10
+                n = 3
+                images_react = gestos(npz,weight_deltas, steps, n)
+                print (f'Elapsed: {(perf_counter()-start_time):.1f} s')
+                j = 1
+                os.makedirs(f'{outdir}/{filename}', exist_ok=True)
+                for gesture in images_react:
+                    # make grid of image list
+                    
+
+                    for face in gesture:
+                        face.save(f'{outdir}/{filename}/{j}.png')
+                        j += 1
+                print(f'Terminé con {filename}.')
+                imagenes_proyectadas.append(img)
+                # except Exception as e: 
+                #     print(e)
+                #     pass
             # Si ya se proyectaron todas las imagenes, espero 5 segundos y vuelvo a chequear
             time.sleep(5)
 
