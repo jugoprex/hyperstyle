@@ -195,6 +195,38 @@ def gestos(latent_vector, weights_deltas, steps, n):
         emotion_array.append(image_list)
     return emotion_array
     
-      
+def gestos_direcciones(latent_vector, weights_deltas, steps, n):
+    source_dir = Path('./models/directions/')
+    dirr = source_dir.glob('*.npz')
+    dirr_todas = [torch.tensor(np.load(x)['w']).reshape([18,512]).cuda() for x in sorted(dirr)]
+    directions = dirr_todas
+    latent_vector = latent_vector.reshape([18,512])
+    inicial = torch.tensor(latent_vector, device=torch.device('cuda')).reshape([18,512])
+    delta = 10
+    emotion_array = []
+    for i in range(n):
+        print(f'Generando gesto {i+1} de {n}')
+        d = directions[i]
+        d = torch.tensor(d,device='cuda')
+        image_list = []
+        for i in range(steps):
+            W = inicial + (d * i/delta)
+            lat = [W.reshape([1,18,512]).float()]     
+            lat_image = latent_editor._latents_to_image(all_latents= lat, weights_deltas=weights_deltas)           
+            res = (lat_image[0])[0]
+            image_list.append(res)
+        emotion_array.append(image_list)
+    return emotion_array
+
+def create_grid(imgs):
+        widths, heights = zip(*(i.size for i in imgs))
+        total_width = sum(widths)
+        max_height = max(heights)
+        new_im = Image.new('RGB', (total_width, max_height))
+        x_offset = 0
+        for im in imgs:
+            new_im.paste(im, (x_offset,0))
+            x_offset += im.size[0]
+        return new_im
         
         

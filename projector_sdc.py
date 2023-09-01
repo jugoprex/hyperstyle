@@ -22,7 +22,7 @@ import PIL.Image
 import torch
 import torch.nn.functional as F
 import glob
-from OSU import encoder, gestos
+from OSU import encoder, gestos_direcciones, create_grid
 from matplotlib import pyplot as plt
 from pathlib import Path
 
@@ -94,25 +94,26 @@ def run_projection(
                 print('Generando gestos...')
 
                 start_time = perf_counter()
-                steps = 10
-                n = 3
-                images_react = gestos(npz,weight_deltas, steps, n)
+                steps = 5
+                n = 4
+                images_react = gestos_direcciones(npz,weight_deltas, steps, n)
                 print (f'Elapsed: {(perf_counter()-start_time):.1f} s')
                 j = 1
                 os.makedirs(f'{outdir}/{filename}', exist_ok=True)
                 for gesture in images_react:
-                    # make grid of image list
-                    
-
+                    print(f'Generando gesto {j} de {len(images_react)}')
+                    i = 1
+                    grid = create_grid(gesture)
+                    grid.save(f'{outdir}/{filename}/grid_{i}.png')
                     for face in gesture:
                         face.save(f'{outdir}/{filename}/{j}.png')
                         j += 1
+                    i += 1
                 print(f'Terminé con {filename}.')
                 imagenes_proyectadas.append(img)
                 # except Exception as e: 
                 #     print(e)
                 #     pass
-            # Si ya se proyectaron todas las imagenes, espero 5 segundos y vuelvo a chequear
             time.sleep(5)
 
 #----------------------------------------------------------------------------
